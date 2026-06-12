@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sobre a Plane Aviation | Plane Aviation</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .prose{ max-width:56rem; margin:0 auto; }
+  .prose p{ font-size:1rem; color:hsl(var(--muted-foreground)); line-height:1.7; margin-bottom:1rem; }
+
+  /* timeline */
+  .tl{ position:relative; max-width:56rem; margin:0 auto; }
+  .tl-line{ position:absolute; left:1rem; top:0; bottom:0; width:1px; background:hsl(var(--border)); }
+  @media(min-width:640px){ .tl-line{ left:50%; transform:translateX(-.5px); } }
+  .tl-items{ display:flex; flex-direction:column; gap:2.5rem; }
+  .tl-item{ position:relative; display:flex; align-items:flex-start; }
+  .tl-dot{ position:absolute; left:1rem; width:.75rem; height:.75rem; background:hsl(var(--foreground)); border-radius:9999px; transform:translateX(-.375rem); margin-top:.375rem; z-index:2; }
+  @media(min-width:640px){ .tl-dot{ left:50%; } }
+  .tl-content{ margin-left:3rem; }
+  @media(min-width:640px){ .tl-content{ margin-left:0; width:50%; } }
+  .tl-item.right .tl-content{ }
+  @media(min-width:640px){
+    .tl-item.left{ flex-direction:row; }
+    .tl-item.left .tl-content{ padding-right:3rem; text-align:right; }
+    .tl-item.right{ flex-direction:row-reverse; }
+    .tl-item.right .tl-content{ padding-left:3rem; }
+  }
+  .tl-year{ font-size:1.125rem; font-weight:700; }
+  .tl-ev{ font-size:.875rem; color:hsl(var(--muted-foreground)); margin-top:.25rem; }
+
+  .insights{ background:hsl(var(--foreground)); color:hsl(var(--background)); padding:4rem 0; }
+  .insights .row{ max-width:56rem; margin:0 auto; display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:2rem; text-align:center; }
+  @media(min-width:640px){ .insights .row{ flex-direction:row; text-align:left; } }
+  .insights h2{ font-size:1.5rem; font-weight:700; letter-spacing:-.025em; color:hsl(var(--background)); margin-top:.25rem; margin-bottom:.5rem; }
+  .insights p{ font-size:.875rem; color:hsl(var(--background)/.6); max-width:32rem; }
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+
+  <!-- HERO -->
+  <section class="page-hero tall center">
+    <div class="container">
+      <span class="eyebrow">Institucional</span>
+      <h1 class="h-display">Sobre a Plane Aviation</h1>
+    </div>
+  </section>
+
+  <!-- HISTÓRIA -->
+  <section style="padding:4rem 0">
+    <div class="container prose">
+      <h2 class="label" style="margin-bottom:1.5rem">Nossa História</h2>
+      <p>Há mais de 20 anos, a Plane Aviation é a representante exclusiva da Cirrus Aircraft no Brasil. Desde o início, nossa missão é oferecer o que há de mais avançado em aviação geral, combinando tecnologia, segurança e excelência operacional.</p>
+      <p>Com uma equipe especializada e infraestrutura completa, atendemos proprietários, operadores e pilotos que buscam o máximo em performance e confiabilidade. Nossa trajetória reflete o compromisso com cada cliente que escolhe voar Cirrus.</p>
+    </div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section style="padding:4rem 0;background:hsl(var(--muted))">
+    <div class="container">
+      <h2 class="label center" style="margin-bottom:2.5rem">Linha do Tempo</h2>
+      <div class="tl">
+        <div class="tl-line"></div>
+        <div class="tl-items" id="tlItems"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INFRAESTRUTURA -->
+  <section style="padding:4rem 0">
+    <div class="container">
+      <h2 class="label center" style="margin-bottom:2rem">Infraestrutura</h2>
+      <div class="grid g1 sm-g3" style="gap:1.5rem">
+        <div class="center"><div class="ph rounded" style="aspect-ratio:4/3"><svg class="icon ico" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><span class="lbl">[Imagem Hangar]</span></div><p style="font-size:.875rem;font-weight:500;margin-top:.75rem">Hangar Principal</p></div>
+        <div class="center"><div class="ph rounded" style="aspect-ratio:4/3"><svg class="icon ico" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><span class="lbl">[Imagem Centro de Manutenção]</span></div><p style="font-size:.875rem;font-weight:500;margin-top:.75rem">Centro de Manutenção</p></div>
+        <div class="center"><div class="ph rounded" style="aspect-ratio:4/3"><svg class="icon ico" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><span class="lbl">[Imagem Equipe]</span></div><p style="font-size:.875rem;font-weight:500;margin-top:.75rem">Nossa Equipe</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLANE INSIGHTS -->
+  <section class="insights">
+    <div class="container">
+      <div class="row">
+        <div>
+          <span class="eyebrow dark">Conteúdo</span>
+          <h2>Plane Insights</h2>
+          <p>Acompanhe nossa visão de mercado, análises de especialistas e episódios exclusivos do nosso podcast sobre o universo da aviação executiva.</p>
+        </div>
+        <a href="news.html" class="btn btn-invert btn-wide">Acessar News &amp; Podcast →</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+<div id="site-footer"></div>
+
+<script src="site.js"></script>
+<script>
+  const timeline = [
+    ["2003","Início da parceria exclusiva com a Cirrus Aircraft no Brasil."],
+    ["2008","Entrega da aeronave de número 100 no mercado brasileiro."],
+    ["2013","Inauguração do novo centro de manutenção em Jundiaí."],
+    ["2017","Primeira entrega do Vision Jet na América Latina."],
+    ["2020","Mais de 400 aeronaves Cirrus entregues no Brasil."],
+    ["2024","Expansão do hangar e certificação Cirrus Vision Center."]
+  ];
+  document.getElementById("tlItems").innerHTML = timeline.map((t,i)=>`
+    <div class="tl-item ${i%2===0?'left':'right'}">
+      <div class="tl-dot"></div>
+      <div class="tl-content"><span class="tl-year">${t[0]}</span><p class="tl-ev">${t[1]}</p></div>
+    </div>`).join("");
+</script>
+</body>
+</html>

@@ -8,17 +8,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---- Helpers ----
     function signedIn() {
       return request.auth != null;
     }
-    // Documento do usuário logado (papel é lido daqui, nunca confiando no cliente)
     function userDoc() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     function hasRoleDoc() {
-      return signedIn() &&
-             exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
     function isAdmin() {
       return hasRoleDoc() && userDoc().role == 'admin';
@@ -27,29 +24,28 @@ service cloud.firestore {
       return hasRoleDoc() && (userDoc().role == 'admin' || userDoc().role == 'editor');
     }
 
-    // ---- Aeronaves à venda (público lê; editor/admin escreve) ----
+    // Aeronaves à venda (público lê; editor/admin escreve)
     match /aircraft/{id} {
       allow read: if true;
-      allow create, update, delete: if isEditor();
+      allow write: if isEditor();
     }
 
-    // ---- Frota de demonstração (Universo Cirrus) ----
+    // Frota de demonstração (Universo Cirrus)
     match /cirrusFleet/{id} {
       allow read: if true;
-      allow create, update, delete: if isEditor();
+      allow write: if isEditor();
     }
 
-    // ---- Usuários / papéis ----
-    // Um usuário pode ler o próprio doc (pra descobrir o papel).
-    // Só admin gerencia papéis de terceiros.
+    // Usuários / papéis (admin gerencia; cada um lê o próprio)
     match /users/{uid} {
-      allow read:   if isAdmin() || (signedIn() && request.auth.uid == uid);
-      allow create, update, delete: if isAdmin();
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if isAdmin();
     }
 
-    // Bloqueia qualquer outra coleção por padrão
+    // Bloqueia qualquer outra coleção
     match /{document=**} {
-      allow read, write: if false;
+      allow read: if false;
+      allow write: if false;
     }
   }
 }

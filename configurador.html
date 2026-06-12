@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configurador | Plane Aviation</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .prog{ border-bottom:1px solid hsl(var(--border)); background:hsl(var(--card)); }
+  .prog .container{ padding-top:1rem; padding-bottom:1rem; }
+  .steps{ display:flex; align-items:center; gap:.5rem; }
+  @media(min-width:640px){ .steps{ gap:1rem; } }
+  .step{ display:flex; align-items:center; gap:.5rem; color:hsl(var(--muted-foreground)); }
+  .step.active{ color:hsl(var(--foreground)); }
+  .step .num{ width:1.5rem; height:1.5rem; border-radius:9999px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0; border:1px solid hsl(var(--border)); }
+  .step.active .num{ background:hsl(var(--foreground)); color:hsl(var(--background)); border-color:hsl(var(--foreground)); }
+  .step .lbl{ font-size:.75rem; font-weight:500; letter-spacing:.025em; display:none; }
+  @media(min-width:640px){ .step .lbl{ display:inline; } }
+  .step-divider{ flex:1; height:1px; background:hsl(var(--border)); }
+  .prog-bar{ margin-top:.75rem; height:.25rem; background:hsl(var(--muted)); border-radius:9999px; overflow:hidden; }
+  .prog-bar .fill{ height:100%; background:hsl(var(--foreground)); border-radius:9999px; width:25%; }
+
+  .cfg-grid{ display:grid; grid-template-columns:1fr; gap:2rem; }
+  @media(min-width:1024px){ .cfg-grid{ grid-template-columns:repeat(5,1fr); } .cfg-grid .left{ grid-column:span 3; } .cfg-grid .right{ grid-column:span 2; } }
+
+  .viz{ background:hsl(var(--muted)); border:2px dashed hsl(var(--border)); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; color:hsl(var(--muted-foreground)/.5); aspect-ratio:4/3; }
+  .viz .box{ width:4rem; height:4rem; border:2px dashed hsl(var(--muted-foreground)/.2); border-radius:var(--radius-sm); margin:0 auto 1rem; display:flex; align-items:center; justify-content:center; }
+  .viz .box span{ font-size:1.5rem; opacity:.2; }
+  .viz .l1{ font-size:.75rem; letter-spacing:.1em; text-transform:uppercase; font-weight:500; display:block; }
+  .viz .l2{ font-size:10px; letter-spacing:.025em; text-transform:uppercase; margin-top:.5rem; display:block; opacity:.6; }
+
+  .opt-block h2{ margin-bottom:1rem; }
+  .opt{ display:flex; align-items:center; gap:.75rem; border:1px solid hsl(var(--border)); border-radius:var(--radius-sm); padding:.75rem 1rem; cursor:pointer; transition:border-color .15s; margin-bottom:.5rem; }
+  .opt:hover{ border-color:hsl(var(--foreground)/.3); }
+  .opt.sel{ border-color:hsl(var(--foreground)); background:hsl(var(--foreground)/.05); }
+  .opt .radio{ width:1rem; height:1rem; border-radius:9999px; border:2px solid hsl(var(--border)); flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .opt.sel .radio{ border-color:hsl(var(--foreground)); }
+  .opt.sel .radio::after{ content:""; width:.5rem; height:.5rem; border-radius:9999px; background:hsl(var(--foreground)); }
+  .opt .name{ font-size:.875rem; color:hsl(var(--muted-foreground)); font-weight:500; }
+  .opt.sel .name{ color:hsl(var(--foreground)); }
+  .dim-2{ opacity:.4; } .dim-3{ opacity:.25; }
+
+  .cfg-foot{ border-top:1px solid hsl(var(--border)); background:hsl(var(--card)); }
+  .cfg-foot .container{ padding-top:1rem; padding-bottom:1rem; display:flex; align-items:center; justify-content:space-between; }
+  .cfg-foot .btn{ padding:.625rem 1.5rem; font-size:.875rem; }
+  .cfg-foot .back{ border:1px solid hsl(var(--border)); background:transparent; color:hsl(var(--foreground)); }
+  .cfg-foot .back:hover{ background:hsl(var(--muted)); }
+  .cfg-foot .right{ display:flex; align-items:center; gap:.75rem; }
+  .cfg-foot .stepcount{ font-size:.75rem; color:hsl(var(--muted-foreground)); display:none; }
+  @media(min-width:640px){ .cfg-foot .stepcount{ display:inline; } }
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+
+  <!-- HERO -->
+  <section style="padding:3rem 0;background:hsl(var(--muted));text-align:center">
+    <div class="container">
+      <span class="eyebrow">Configuração</span>
+      <h1 style="font-size:1.875rem;font-weight:700;letter-spacing:-.025em;margin-top:.75rem">Monte sua aeronave</h1>
+      <p class="muted" style="font-size:.875rem;margin-top:.5rem">Personalize modelo, exterior e interior. Envie para cotação em minutos.</p>
+    </div>
+  </section>
+
+  <!-- PROGRESS -->
+  <div class="prog">
+    <div class="container">
+      <div class="steps" id="steps"></div>
+      <div class="prog-bar"><div class="fill"></div></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <section style="padding:3rem 0">
+    <div class="container">
+      <div class="cfg-grid">
+        <!-- 3D placeholder -->
+        <div class="left">
+          <div class="viz">
+            <div class="center" style="padding:0 2rem">
+              <div class="box"><span>✦</span></div>
+              <span class="l1">[ Placeholder: Visualização 3D da Aeronave ]</span>
+              <span class="l2">SR22T · Branco Clássico · Couro Natural</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opções -->
+        <div class="right" style="display:flex;flex-direction:column;gap:2rem">
+          <div class="opt-block">
+            <h2 class="label">Passo 1 — Escolha o Modelo</h2>
+            <div id="modelOpts"></div>
+          </div>
+          <div class="opt-block dim-2">
+            <h2 class="label">Passo 2 — Cor Exterior</h2>
+            <div id="extOpts"></div>
+          </div>
+          <div class="opt-block dim-3">
+            <h2 class="label">Passo 3 — Interior</h2>
+            <div id="intOpts"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer nav -->
+<div class="cfg-foot">
+  <div class="container">
+    <a href="aeronaves.html" class="btn back">← Voltar</a>
+    <div class="right">
+      <span class="stepcount">Passo 1 de 4</span>
+      <a href="contato.html?motivo=comprar-novo" class="btn btn-solid">Solicitar Cotação</a>
+    </div>
+  </div>
+</div>
+
+<div id="site-footer"></div>
+
+<script src="site.js"></script>
+<script>
+  const steps = ["Modelo","Exterior","Interior","Resumo"];
+  document.getElementById("steps").innerHTML = steps.map((s,i)=>{
+    const stepEl = `<div class="step ${i===0?'active':''}"><div class="num">${i+1}</div><span class="lbl">${s}</span></div>`;
+    return stepEl + (i<steps.length-1 ? '<div class="step-divider"></div>' : '');
+  }).join("");
+
+  const modelOptions = ["Vision Jet","SR22T","SR22","SR20"];   // selecionado: índice 1
+  const exteriorOptions = ["Branco Clássico","Prata Metálico","Azul Especial","Customizado"];
+  const interiorOptions = ["Couro Natural","Couro Escuro","Couro Claro","Alcântara Premium"];
+
+  document.getElementById("modelOpts").innerHTML = modelOptions.map((o,i)=>
+    `<label class="opt ${i===1?'sel':''}"><span class="radio"></span><span class="name">${o}</span></label>`).join("");
+  document.getElementById("extOpts").innerHTML = exteriorOptions.map(o=>
+    `<div class="opt"><span class="radio"></span><span class="name">${o}</span></div>`).join("");
+  document.getElementById("intOpts").innerHTML = interiorOptions.map(o=>
+    `<div class="opt"><span class="radio"></span><span class="name">${o}</span></div>`).join("");
+</script>
+</body>
+</html>
