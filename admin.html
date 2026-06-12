@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Administrativo | Plane Aviation</title>
+<link rel="stylesheet" href="styles.css">
+<!-- Firebase (compat SDK) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<style>
+  body{ background:hsl(var(--background)); }
+  .admin-top{ position:sticky; top:0; z-index:40; background:rgba(255,255,255,.95); backdrop-filter:blur(8px); border-bottom:1px solid hsl(var(--border)); }
+  .admin-top .container{ height:3.5rem; display:flex; align-items:center; justify-content:space-between; }
+  .admin-top .who{ font-size:.75rem; color:hsl(var(--muted-foreground)); display:flex; align-items:center; gap:.75rem; }
+  .admin-top .who b{ color:hsl(var(--foreground)); font-weight:600; }
+  .pill{ font-size:10px; letter-spacing:.05em; text-transform:uppercase; font-weight:700; padding:.2rem .5rem; border-radius:var(--radius-sm); border:1px solid hsl(var(--border)); }
+  .pill.admin{ background:hsl(var(--foreground)); color:hsl(var(--background)); border-color:hsl(var(--foreground)); }
+  .pill.editor{ color:hsl(var(--muted-foreground)); }
+
+  .tabs{ display:flex; gap:.25rem; border-bottom:1px solid hsl(var(--border)); margin-bottom:2rem; flex-wrap:wrap; }
+  .tab{ background:none; border:none; border-bottom:2px solid transparent; padding:.75rem 1rem; font-size:.8125rem; font-weight:600; letter-spacing:.02em; text-transform:uppercase; color:hsl(var(--muted-foreground)); cursor:pointer; }
+  .tab.active{ color:hsl(var(--foreground)); border-bottom-color:hsl(var(--foreground)); }
+  .panel{ display:none; } .panel.active{ display:block; }
+
+  .row-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; gap:1rem; flex-wrap:wrap; }
+  .row-head h2{ font-size:1.25rem; font-weight:700; letter-spacing:-.025em; }
+  .row-head .sub{ font-size:.8125rem; color:hsl(var(--muted-foreground)); margin-top:.125rem; }
+
+  table.tbl{ width:100%; border-collapse:collapse; border:1px solid hsl(var(--border)); border-radius:var(--radius-sm); overflow:hidden; background:hsl(var(--card)); }
+  .tbl th{ text-align:left; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:hsl(var(--muted-foreground)); font-weight:600; padding:.75rem 1rem; border-bottom:1px solid hsl(var(--border)); background:hsl(var(--muted)); }
+  .tbl td{ padding:.75rem 1rem; font-size:.875rem; border-bottom:1px solid hsl(var(--border)); vertical-align:middle; }
+  .tbl tr:last-child td{ border-bottom:none; }
+  .tbl .thumb{ width:3.5rem; height:2.5rem; object-fit:cover; border:1px solid hsl(var(--border)); border-radius:var(--radius-sm); background:hsl(var(--muted)); display:block; }
+  .tbl .act{ display:flex; gap:.5rem; justify-content:flex-end; }
+  .icon-btn{ background:none; border:1px solid hsl(var(--border)); border-radius:var(--radius-sm); padding:.375rem .625rem; font-size:.75rem; font-weight:600; cursor:pointer; color:hsl(var(--foreground)); }
+  .icon-btn:hover{ background:hsl(var(--muted)); }
+  .icon-btn.danger{ color:#b42318; border-color:#f3c6c0; }
+  .icon-btn.danger:hover{ background:#fdecea; }
+  .empty-row{ text-align:center; color:hsl(var(--muted-foreground)); padding:3rem 1rem; font-size:.875rem; }
+
+  /* Modal */
+  .overlay{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:flex-start; justify-content:center; z-index:60; padding:2rem 1rem; overflow-y:auto; }
+  .overlay.open{ display:flex; }
+  .modal{ background:hsl(var(--card)); border:1px solid hsl(var(--border)); border-radius:var(--radius-sm); width:100%; max-width:42rem; margin:auto; }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:1.25rem 1.5rem; border-bottom:1px solid hsl(var(--border)); }
+  .modal-head h3{ font-size:1rem; font-weight:700; }
+  .modal-body{ padding:1.5rem; }
+  .modal-foot{ display:flex; justify-content:flex-end; gap:.75rem; padding:1.25rem 1.5rem; border-top:1px solid hsl(var(--border)); }
+  .x-btn{ background:none; border:none; cursor:pointer; color:hsl(var(--muted-foreground)); padding:.25rem; }
+
+  /* Forms */
+  .fld{ margin-bottom:1rem; }
+  .fld label{ display:block; font-size:.75rem; font-weight:500; letter-spacing:.025em; text-transform:uppercase; color:hsl(var(--muted-foreground)); margin-bottom:.375rem; }
+  .fld input, .fld select, .fld textarea{ width:100%; border:1px solid hsl(var(--border)); border-radius:var(--radius-sm); padding:.625rem .75rem; font-size:.875rem; background:hsl(var(--card)); color:hsl(var(--foreground)); }
+  .fld input:focus, .fld select:focus, .fld textarea:focus{ outline:none; border-color:hsl(var(--foreground)/.4); }
+  .fld select{ appearance:none; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  @media(max-width:560px){ .grid2{ grid-template-columns:1fr; } }
+  .check{ display:flex; align-items:center; gap:.5rem; font-size:.875rem; }
+  .check input{ width:auto; }
+  .repeater .rrow{ display:grid; grid-template-columns:1fr 1fr auto; gap:.5rem; margin-bottom:.5rem; align-items:center; }
+  .repeater .rrow.feat{ grid-template-columns:9rem 1fr 1fr auto; }
+  @media(max-width:560px){ .repeater .rrow, .repeater .rrow.feat{ grid-template-columns:1fr; } }
+  .mini{ font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:hsl(var(--foreground)); background:none; border:1px dashed hsl(var(--border)); border-radius:var(--radius-sm); padding:.5rem .75rem; cursor:pointer; }
+  .rm{ background:none; border:none; color:#b42318; cursor:pointer; font-size:1.1rem; line-height:1; padding:.25rem .5rem; }
+
+  /* image uploader */
+  .uploader{ border:2px dashed hsl(var(--border)); border-radius:var(--radius-sm); padding:1rem; text-align:center; }
+  .uploader input{ display:none; }
+  .uploader .hint{ font-size:.75rem; color:hsl(var(--muted-foreground)); }
+  .thumbs-edit{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.75rem; }
+  .thumbs-edit .t{ position:relative; }
+  .thumbs-edit img{ width:4.5rem; height:3.25rem; object-fit:cover; border:1px solid hsl(var(--border)); border-radius:var(--radius-sm); display:block; }
+  .thumbs-edit .del{ position:absolute; top:-.4rem; right:-.4rem; width:1.25rem; height:1.25rem; background:#b42318; color:#fff; border:none; border-radius:9999px; font-size:.7rem; cursor:pointer; line-height:1; }
+  .prog{ height:.25rem; background:hsl(var(--muted)); border-radius:9999px; overflow:hidden; margin-top:.5rem; display:none; }
+  .prog.show{ display:block; } .prog .bar{ height:100%; background:hsl(var(--foreground)); width:0; transition:width .2s; }
+
+  /* login + states */
+  .center-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
+  .auth-card{ width:100%; max-width:24rem; background:hsl(var(--card)); border:1px solid hsl(var(--border)); border-radius:var(--radius-sm); padding:2rem; }
+  .auth-logo{ display:flex; align-items:center; gap:.5rem; margin-bottom:1.5rem; }
+  .auth-card h1{ font-size:1.125rem; font-weight:700; margin-bottom:.25rem; }
+  .auth-card .muted{ font-size:.8125rem; margin-bottom:1.5rem; }
+  .msg{ font-size:.8125rem; padding:.625rem .75rem; border-radius:var(--radius-sm); margin-bottom:1rem; display:none; }
+  .msg.show{ display:block; }
+  .msg.err{ background:#fdecea; color:#b42318; border:1px solid #f3c6c0; }
+  .msg.ok{ background:#eafaf0; color:#1a7f47; border:1px solid #bfe6cd; }
+  .link-btn{ background:none; border:none; color:hsl(var(--foreground)); text-decoration:underline; font-size:.8125rem; cursor:pointer; padding:0; }
+  .notice{ max-width:40rem; margin:3rem auto; background:hsl(var(--card)); border:1px solid hsl(var(--border)); border-radius:var(--radius-sm); padding:2rem; }
+  .notice h2{ font-size:1.125rem; font-weight:700; margin-bottom:.75rem; }
+  .notice p, .notice li{ font-size:.875rem; color:hsl(var(--muted-foreground)); line-height:1.6; }
+  .notice ol{ margin:.75rem 0 0 1.25rem; } .notice code{ background:hsl(var(--muted)); padding:.1rem .35rem; border-radius:3px; font-size:.8125rem; }
+  .spinner{ min-height:100vh; display:flex; align-items:center; justify-content:center; color:hsl(var(--muted-foreground)); font-size:.875rem; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="view-loading" class="spinner">Carregando…</div>
+
+<!-- NOT CONFIGURED -->
+<div id="view-setup" style="display:none">
+  <div class="notice">
+    <h2>Configure o Firebase para ativar o painel</h2>
+    <p>Este painel usa Firebase (Auth + Firestore + Storage). Para ligá-lo:</p>
+    <ol>
+      <li>Crie um projeto em <code>console.firebase.google.com</code>.</li>
+      <li>Ative <b>Authentication → E-mail/senha</b>, crie um <b>Firestore</b> e o <b>Storage</b>.</li>
+      <li>Cole as chaves do app em <code>firebase-config.js</code>.</li>
+      <li>Publique as regras de <code>firestore.rules</code> e <code>storage.rules</code>.</li>
+      <li>Crie o primeiro admin (passo a passo no <code>SETUP.md</code>).</li>
+    </ol>
+    <p style="margin-top:1rem">Enquanto não configurar, o site público continua funcionando com os dados de exemplo.</p>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="view-login" class="center-screen" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo"><span class="logo-mark"><span>PA</span></span><span class="logo-name">Plane Aviation</span></div>
+    <h1>Painel Administrativo</h1>
+    <p class="muted">Acesso restrito à equipe autorizada.</p>
+    <div id="loginMsg" class="msg"></div>
+    <div class="fld"><label>E-mail</label><input type="email" id="loginEmail" placeholder="voce@empresa.com" autocomplete="username"></div>
+    <div class="fld"><label>Senha</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn btn-solid btn-md" id="loginBtn" style="width:100%">Entrar</button>
+    <div style="margin-top:1rem;text-align:center"><button class="link-btn" id="forgotBtn">Esqueci minha senha</button></div>
+  </div>
+</div>
+
+<!-- ACCESS DENIED -->
+<div id="view-denied" class="center-screen" style="display:none">
+  <div class="auth-card center">
+    <h1>Sem permissão de acesso</h1>
+    <p class="muted">Sua conta está autenticada, mas ainda não tem um papel (admin/editor) atribuído. Peça a um administrador para liberar seu acesso.</p>
+    <button class="btn btn-outline btn-sm" id="denyLogout" style="margin-top:1rem">Sair</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="view-app" style="display:none">
+  <div class="admin-top">
+    <div class="container">
+      <div class="logo"><span class="logo-mark"><span>PA</span></span><span class="logo-name">Admin</span></div>
+      <div class="who">
+        <span><b id="meEmail"></b></span>
+        <span class="pill" id="mePill"></span>
+        <a href="index.html" class="icon-btn" target="_blank">Ver site</a>
+        <button class="icon-btn" id="logoutBtn">Sair</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:2rem;padding-bottom:4rem">
+    <div class="tabs">
+      <button class="tab active" data-tab="aircraft">Aeronaves à venda</button>
+      <button class="tab" data-tab="cirrus">Frota Cirrus</button>
+      <button class="tab admin-only" data-tab="users">Usuários</button>
+    </div>
+
+    <!-- AIRCRAFT -->
+    <div class="panel active" id="panel-aircraft">
+      <div class="row-head">
+        <div><h2>Aeronaves à venda</h2><p class="sub">Aparecem na página <b>Aeronaves Disponíveis</b>.</p></div>
+        <button class="btn btn-solid btn-sm" id="addAircraft">+ Nova aeronave</button>
+      </div>
+      <table class="tbl"><tbody id="aircraftRows"></tbody></table>
+    </div>
+
+    <!-- CIRRUS -->
+    <div class="panel" id="panel-cirrus">
+      <div class="row-head">
+        <div><h2>Frota de demonstração Cirrus</h2><p class="sub">Aparece em <b>Universo Cirrus → Linha de modelos</b>.</p></div>
+        <button class="btn btn-solid btn-sm" id="addCirrus">+ Novo modelo</button>
+      </div>
+      <table class="tbl"><tbody id="cirrusRows"></tbody></table>
+    </div>
+
+    <!-- USERS -->
+    <div class="panel" id="panel-users">
+      <div class="row-head">
+        <div><h2>Usuários &amp; papéis</h2><p class="sub">Admin gerencia. Editor edita conteúdo; Admin também gerencia usuários.</p></div>
+        <button class="btn btn-solid btn-sm" id="addUser">+ Convidar usuário</button>
+      </div>
+      <table class="tbl"><tbody id="userRows"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: AIRCRAFT ===== -->
+<div class="overlay" id="ovAircraft">
+  <div class="modal">
+    <div class="modal-head"><h3 id="acTitle">Nova aeronave</h3><button class="x-btn" data-close>✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="acId">
+      <div class="grid2">
+        <div class="fld"><label>Modelo *</label><input id="acModel" placeholder="SR22T"></div>
+        <div class="fld"><label>Ano *</label><input id="acYear" type="number" placeholder="2022"></div>
+      </div>
+      <div class="grid2">
+        <div class="fld"><label>Horas</label><input id="acHours" placeholder="320 horas"></div>
+        <div class="fld"><label>Condição</label><select id="acCondition"><option>Novo</option><option>Seminovo</option></select></div>
+      </div>
+      <div class="grid2">
+        <div class="fld"><label>Localização</label><input id="acLocation" placeholder="Jundiaí — SP"></div>
+        <div class="fld"><label>Preço</label><input id="acPrice" placeholder="Sob Consulta"></div>
+      </div>
+      <div class="grid2">
+        <div class="fld"><label>Selo (tag)</label><input id="acTag" placeholder="EXCLUSIVO PLANE"></div>
+        <div class="fld"><label>Estilo do selo</label><select id="acTagSolid"><option value="true">Sólido (preto)</option><option value="false">Contorno</option></select></div>
+      </div>
+
+      <div class="fld">
+        <label>Imagens (galeria)</label>
+        <div class="uploader" id="acUpZone">
+          <div class="hint">Clique para enviar imagens (JPG/PNG, até 8 MB cada)</div>
+          <input type="file" id="acFiles" accept="image/*" multiple>
+        </div>
+        <div class="prog" id="acProg"><div class="bar"></div></div>
+        <div class="thumbs-edit" id="acThumbs"></div>
+      </div>
+
+      <div class="fld">
+        <label>Ficha técnica</label>
+        <div class="repeater" id="acSpecs"></div>
+        <button class="mini" id="acAddSpec">+ Adicionar linha</button>
+      </div>
+
+      <div class="fld">
+        <label>Tecnologias a bordo</label>
+        <div class="repeater" id="acFeats"></div>
+        <button class="mini" id="acAddFeat">+ Adicionar tecnologia</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline btn-sm" data-close>Cancelar</button>
+      <button class="btn btn-solid btn-sm" id="acSave">Salvar aeronave</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: CIRRUS ===== -->
+<div class="overlay" id="ovCirrus">
+  <div class="modal">
+    <div class="modal-head"><h3 id="cfTitle">Novo modelo</h3><button class="x-btn" data-close>✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="cfId">
+      <div class="grid2">
+        <div class="fld"><label>Nome *</label><input id="cfName" placeholder="Vision Jet"></div>
+        <div class="fld"><label>Etiqueta</label><input id="cfLabel" placeholder="Jato Pessoal"></div>
+      </div>
+      <div class="fld"><label>Descrição</label><textarea id="cfDesc" rows="3" placeholder="O primeiro e único jato pessoal com sistema CAPS..."></textarea></div>
+      <div class="grid2">
+        <div class="fld"><label>Ordem de exibição</label><input id="cfOrder" type="number" placeholder="1"></div>
+        <div class="fld"><label>Imagem</label>
+          <div class="uploader" id="cfUpZone"><div class="hint">Enviar imagem</div><input type="file" id="cfFile" accept="image/*"></div>
+          <div class="prog" id="cfProg"><div class="bar"></div></div>
+        </div>
+      </div>
+      <div class="thumbs-edit" id="cfThumb"></div>
+      <div class="fld">
+        <label>Especificações (4 itens)</label>
+        <div class="repeater" id="cfSpecs"></div>
+        <button class="mini" id="cfAddSpec">+ Adicionar spec</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline btn-sm" data-close>Cancelar</button>
+      <button class="btn btn-solid btn-sm" id="cfSave">Salvar modelo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: USER ===== -->
+<div class="overlay" id="ovUser">
+  <div class="modal" style="max-width:28rem">
+    <div class="modal-head"><h3>Convidar usuário</h3><button class="x-btn" data-close>✕</button></div>
+    <div class="modal-body">
+      <div id="userMsg" class="msg"></div>
+      <div class="fld"><label>E-mail *</label><input id="uEmail" type="email" placeholder="novo@empresa.com"></div>
+      <div class="fld"><label>Papel *</label><select id="uRole"><option value="editor">Editor (edita conteúdo)</option><option value="admin">Admin (tudo + usuários)</option></select></div>
+      <p class="sub" style="font-size:.75rem;color:hsl(var(--muted-foreground))">O usuário recebe um e-mail para definir a própria senha. Nenhuma senha é digitada ou armazenada aqui.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline btn-sm" data-close>Cancelar</button>
+      <button class="btn btn-solid btn-sm" id="uSave">Enviar convite</button>
+    </div>
+  </div>
+</div>
+
+<script src="firebase-config.js"></script>
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const show = (id) => ["view-loading","view-setup","view-login","view-denied","view-app"].forEach(v => $(v).style.display = (v===id?"block":"none"));
+  const showFlex = (id) => { show(id); if($(id)) $(id).style.display="flex"; };
+
+  // Sem config → tela de setup, mas não trava
+  if (!window.PA || !PA.configured) { $("view-loading").style.display="none"; $("view-setup").style.display="block"; return; }
+
+  const { auth, db, storage } = PA;
+  let me = null;        // { uid, email, role }
+  let editImages = [];  // buffer de imagens no modal de aeronave
+  let cirrusImage = ""; // buffer de imagem no modal cirrus
+
+  function msg(el, text, type){ el.textContent=text; el.className="msg show "+(type||""); }
+  function clearMsg(el){ el.className="msg"; }
+
+  /* ---------------- AUTH ---------------- */
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) { $("view-loading").style.display="none"; showFlex("view-login"); return; }
+    try {
+      const snap = await db.collection("users").doc(user.uid).get();
+      if (!snap.exists || !PA.ROLES.includes(snap.data().role)) {
+        $("view-loading").style.display="none"; showFlex("view-denied"); return;
+      }
+      me = { uid:user.uid, email:user.email, role:snap.data().role };
+      bootApp();
+    } catch(e){ $("view-loading").style.display="none"; showFlex("view-login"); msg($("loginMsg"), "Falha ao verificar permissão: "+e.message, "err"); }
+  });
+
+  $("loginBtn").onclick = async () => {
+    clearMsg($("loginMsg"));
+    try { await auth.signInWithEmailAndPassword($("loginEmail").value.trim(), $("loginPass").value); }
+    catch(e){ msg($("loginMsg"), traduz(e.code) || e.message, "err"); }
+  };
+  $("loginPass").addEventListener("keydown", e=>{ if(e.key==="Enter") $("loginBtn").click(); });
+  $("forgotBtn").onclick = async () => {
+    const email = $("loginEmail").value.trim();
+    if(!email) return msg($("loginMsg"),"Digite seu e-mail acima primeiro.","err");
+    try { await auth.sendPasswordResetEmail(email); msg($("loginMsg"),"Enviamos um link de redefinição para seu e-mail.","ok"); }
+    catch(e){ msg($("loginMsg"), traduz(e.code) || e.message, "err"); }
+  };
+  $("logoutBtn").onclick = () => auth.signOut();
+  $("denyLogout").onclick = () => auth.signOut();
+
+  function traduz(code){
+    const m = { "auth/invalid-email":"E-mail inválido.","auth/user-not-found":"Usuário não encontrado.","auth/wrong-password":"Senha incorreta.","auth/invalid-credential":"Credenciais inválidas.","auth/too-many-requests":"Muitas tentativas. Tente mais tarde.","auth/email-already-in-use":"Este e-mail já tem conta." };
+    return m[code];
+  }
+
+  /* ---------------- APP BOOT ---------------- */
+  function bootApp(){
+    $("view-loading").style.display="none";
+    show("view-app");
+    $("meEmail").textContent = me.email;
+    $("mePill").textContent = me.role; $("mePill").className = "pill "+me.role;
+    document.querySelectorAll(".admin-only").forEach(el => el.style.display = (me.role==="admin"?"":"none"));
+
+    document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+      document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+      t.classList.add("active"); $("panel-"+t.dataset.tab).classList.add("active");
+    });
+
+    // fechar modais
+    document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => b.closest(".overlay").classList.remove("open"));
+    document.querySelectorAll(".overlay").forEach(o => o.addEventListener("click", e=>{ if(e.target===o) o.classList.remove("open"); }));
+
+    loadAircraft(); loadCirrus(); if(me.role==="admin") loadUsers();
+    wireAircraftModal(); wireCirrusModal(); wireUserModal();
+  }
+
+  /* ============================================================
+     AERONAVES À VENDA
+     ============================================================ */
+  async function loadAircraft(){
+    const rows = $("aircraftRows");
+    rows.innerHTML = `<tr><td class="empty-row">Carregando…</td></tr>`;
+    const snap = await db.collection("aircraft").orderBy("createdAt","desc").get().catch(()=>null);
+    if(!snap || snap.empty){ rows.innerHTML = `<tr><td class="empty-row">Nenhuma aeronave cadastrada. Clique em “Nova aeronave”.</td></tr>`; return; }
+    rows.innerHTML = "";
+    snap.forEach(doc => {
+      const a = doc.data();
+      const img = (a.images && a.images[0]) ? `<img class="thumb" src="${a.images[0]}">` : `<div class="thumb"></div>`;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td style="width:4rem">${img}</td>
+        <td><b>${esc(a.model||"")}</b><div style="font-size:.75rem;color:hsl(var(--muted-foreground))">${esc(a.condition||"")} · ${a.year||""} · ${esc(a.location||"")}</div></td>
+        <td style="font-size:.75rem;color:hsl(var(--muted-foreground))">${esc(a.tag||"")}</td>
+        <td><div class="act"><button class="icon-btn">Editar</button><button class="icon-btn danger">Excluir</button></div></td>`;
+      tr.querySelector(".icon-btn").onclick = () => openAircraft(doc.id, a);
+      tr.querySelector(".danger").onclick = () => delDoc("aircraft", doc.id, a.model, loadAircraft);
+      rows.appendChild(tr);
+    });
+  }
+
+  function specRow(label="", value=""){
+    const d=document.createElement("div"); d.className="rrow";
+    d.innerHTML=`<input placeholder="Rótulo (ex: Motorização)" value="${esc(label)}"><input placeholder="Valor" value="${esc(value)}"><button class="rm" title="Remover">×</button>`;
+    d.querySelector(".rm").onclick=()=>d.remove(); return d;
+  }
+  function featRow(icon="Shield", title="", desc=""){
+    const opts = PA.FEATURE_ICONS.map(i=>`<option ${i===icon?"selected":""}>${i}</option>`).join("");
+    const d=document.createElement("div"); d.className="rrow feat";
+    d.innerHTML=`<select>${opts}</select><input placeholder="Título" value="${esc(title)}"><input placeholder="Descrição" value="${esc(desc)}"><button class="rm">×</button>`;
+    d.querySelector(".rm").onclick=()=>d.remove(); return d;
+  }
+
+  function wireAircraftModal(){
+    $("addAircraft").onclick = () => openAircraft(null, null);
+    $("acAddSpec").onclick = () => $("acSpecs").appendChild(specRow());
+    $("acAddFeat").onclick = () => $("acFeats").appendChild(featRow());
+    $("acUpZone").onclick = (e)=>{ if(e.target.tagName!=="INPUT") $("acFiles").click(); };
+    $("acFiles").onchange = (e)=> uploadImages(e.target.files, "aircraft", $("acProg"), (url)=>{ editImages.push(url); renderEditThumbs(); });
+    $("acSave").onclick = saveAircraft;
+  }
+  function renderEditThumbs(){
+    $("acThumbs").innerHTML = editImages.map((u,i)=>`<div class="t"><img src="${u}"><button class="del" data-i="${i}">×</button></div>`).join("");
+    $("acThumbs").querySelectorAll(".del").forEach(b=>b.onclick=()=>{ editImages.splice(+b.dataset.i,1); renderEditThumbs(); });
+  }
+  function openAircraft(id, a){
+    a = a || {};
+    $("acTitle").textContent = id ? "Editar aeronave" : "Nova aeronave";
+    $("acId").value = id || "";
+    $("acModel").value=a.model||""; $("acYear").value=a.year||""; $("acHours").value=a.hours||"";
+    $("acCondition").value=a.condition||"Seminovo"; $("acLocation").value=a.location||""; $("acPrice").value=a.price||"Sob Consulta";
+    $("acTag").value=a.tag||""; $("acTagSolid").value=String(a.tagSolid!==false);
+    editImages = Array.isArray(a.images)? a.images.slice() : []; renderEditThumbs();
+    $("acSpecs").innerHTML=""; (a.specs||[]).forEach(s=>$("acSpecs").appendChild(specRow(s.label,s.value)));
+    if(!(a.specs||[]).length) $("acSpecs").appendChild(specRow());
+    $("acFeats").innerHTML=""; (a.features||[]).forEach(f=>$("acFeats").appendChild(featRow(f.icon,f.title,f.desc)));
+    if(!(a.features||[]).length) $("acFeats").appendChild(featRow());
+    $("ovAircraft").classList.add("open");
+  }
+  async function saveAircraft(){
+    const model=$("acModel").value.trim();
+    if(!model) return alert("Informe o modelo.");
+    const specs=[...$("acSpecs").querySelectorAll(".rrow")].map(r=>{const i=r.querySelectorAll("input");return {label:i[0].value.trim(),value:i[1].value.trim()};}).filter(s=>s.label||s.value);
+    const features=[...$("acFeats").querySelectorAll(".rrow")].map(r=>({icon:r.querySelector("select").value,title:r.querySelectorAll("input")[0].value.trim(),desc:r.querySelectorAll("input")[1].value.trim()})).filter(f=>f.title||f.desc);
+    const data={ model, year:Number($("acYear").value)||null, hours:$("acHours").value.trim(), condition:$("acCondition").value,
+      location:$("acLocation").value.trim(), price:$("acPrice").value.trim()||"Sob Consulta", tag:$("acTag").value.trim(),
+      tagSolid:$("acTagSolid").value==="true", images:editImages, specs, features, updatedAt:ts(), updatedBy:me.email };
+    const id=$("acId").value;
+    try{
+      if(id){ await db.collection("aircraft").doc(id).update(data); }
+      else { data.createdAt=ts(); data.createdBy=me.email; await db.collection("aircraft").add(data); }
+      $("ovAircraft").classList.remove("open"); loadAircraft();
+    }catch(e){ alert("Erro ao salvar: "+e.message); }
+  }
+
+  /* ============================================================
+     FROTA CIRRUS
+     ============================================================ */
+  async function loadCirrus(){
+    const rows=$("cirrusRows");
+    rows.innerHTML=`<tr><td class="empty-row">Carregando…</td></tr>`;
+    const snap=await db.collection("cirrusFleet").orderBy("order","asc").get().catch(()=>null);
+    if(!snap||snap.empty){ rows.innerHTML=`<tr><td class="empty-row">Nenhum modelo cadastrado. Clique em “Novo modelo”.</td></tr>`; return; }
+    rows.innerHTML="";
+    snap.forEach(doc=>{ const c=doc.data();
+      const img=c.image?`<img class="thumb" src="${c.image}">`:`<div class="thumb"></div>`;
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td style="width:4rem">${img}</td><td><b>${esc(c.name||"")}</b><div style="font-size:.75rem;color:hsl(var(--muted-foreground))">${esc(c.label||"")}</div></td><td style="font-size:.75rem;color:hsl(var(--muted-foreground))">ordem ${c.order??"—"}</td><td><div class="act"><button class="icon-btn">Editar</button><button class="icon-btn danger">Excluir</button></div></td>`;
+      tr.querySelector(".icon-btn").onclick=()=>openCirrus(doc.id,c);
+      tr.querySelector(".danger").onclick=()=>delDoc("cirrusFleet",doc.id,c.name,loadCirrus);
+      rows.appendChild(tr);
+    });
+  }
+  function cspecRow(k="",v=""){ const d=document.createElement("div"); d.className="rrow";
+    d.innerHTML=`<input placeholder="Spec (ex: Alcance)" value="${esc(k)}"><input placeholder="Valor (ex: 1.200 nm)" value="${esc(v)}"><button class="rm">×</button>`;
+    d.querySelector(".rm").onclick=()=>d.remove(); return d; }
+  function wireCirrusModal(){
+    $("addCirrus").onclick=()=>openCirrus(null,null);
+    $("cfAddSpec").onclick=()=>$("cfSpecs").appendChild(cspecRow());
+    $("cfUpZone").onclick=(e)=>{ if(e.target.tagName!=="INPUT") $("cfFile").click(); };
+    $("cfFile").onchange=(e)=>uploadImages(e.target.files,"cirrus",$("cfProg"),(url)=>{ cirrusImage=url; renderCfThumb(); });
+    $("cfSave").onclick=saveCirrus;
+  }
+  function renderCfThumb(){ $("cfThumb").innerHTML=cirrusImage?`<div class="t"><img src="${cirrusImage}"><button class="del">×</button></div>`:""; const b=$("cfThumb").querySelector(".del"); if(b)b.onclick=()=>{cirrusImage="";renderCfThumb();}; }
+  function openCirrus(id,c){ c=c||{};
+    $("cfTitle").textContent=id?"Editar modelo":"Novo modelo";
+    $("cfId").value=id||""; $("cfName").value=c.name||""; $("cfLabel").value=c.label||""; $("cfDesc").value=c.desc||""; $("cfOrder").value=c.order??"";
+    cirrusImage=c.image||""; renderCfThumb();
+    $("cfSpecs").innerHTML=""; (c.specs||[]).forEach(s=>$("cfSpecs").appendChild(cspecRow(s.k,s.v)));
+    if(!(c.specs||[]).length) for(let i=0;i<4;i++) $("cfSpecs").appendChild(cspecRow());
+    $("ovCirrus").classList.add("open");
+  }
+  async function saveCirrus(){
+    const name=$("cfName").value.trim(); if(!name) return alert("Informe o nome.");
+    const specs=[...$("cfSpecs").querySelectorAll(".rrow")].map(r=>{const i=r.querySelectorAll("input");return{k:i[0].value.trim(),v:i[1].value.trim()};}).filter(s=>s.k||s.v);
+    const data={ name, label:$("cfLabel").value.trim(), desc:$("cfDesc").value.trim(), order:Number($("cfOrder").value)||0, image:cirrusImage, specs, updatedAt:ts(), updatedBy:me.email };
+    const id=$("cfId").value;
+    try{
+      if(id) await db.collection("cirrusFleet").doc(id).update(data);
+      else { data.createdAt=ts(); data.createdBy=me.email; await db.collection("cirrusFleet").add(data); }
+      $("ovCirrus").classList.remove("open"); loadCirrus();
+    }catch(e){ alert("Erro ao salvar: "+e.message); }
+  }
+
+  /* ============================================================
+     USUÁRIOS (admin)
+     ============================================================ */
+  async function loadUsers(){
+    const rows=$("userRows");
+    rows.innerHTML=`<tr><td class="empty-row">Carregando…</td></tr>`;
+    const snap=await db.collection("users").get().catch(()=>null);
+    if(!snap||snap.empty){ rows.innerHTML=`<tr><td class="empty-row">Nenhum usuário.</td></tr>`; return; }
+    rows.innerHTML="";
+    snap.forEach(doc=>{ const u=doc.data(); const isMe=doc.id===me.uid;
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td><b>${esc(u.email||doc.id)}</b>${isMe?' <span style="font-size:.7rem;color:hsl(var(--muted-foreground))">(você)</span>':''}</td>
+        <td><span class="pill ${u.role}">${esc(u.role||"")}</span></td>
+        <td><div class="act">
+          <select class="icon-btn roleSel" ${isMe?"disabled":""}><option value="editor" ${u.role==="editor"?"selected":""}>editor</option><option value="admin" ${u.role==="admin"?"selected":""}>admin</option></select>
+          <button class="icon-btn danger" ${isMe?"disabled style=opacity:.4":""}>Remover</button>
+        </div></td>`;
+      const sel=tr.querySelector(".roleSel");
+      if(!isMe){ sel.onchange=async()=>{ try{ await db.collection("users").doc(doc.id).update({role:sel.value}); loadUsers(); }catch(e){ alert(e.message);} }; }
+      const rm=tr.querySelector(".danger"); if(!isMe) rm.onclick=()=>removeUser(doc.id,u.email);
+      rows.appendChild(tr);
+    });
+  }
+  function wireUserModal(){
+    $("addUser").onclick=()=>{ clearMsg($("userMsg")); $("uEmail").value=""; $("uRole").value="editor"; $("ovUser").classList.add("open"); };
+    $("uSave").onclick=inviteUser;
+  }
+  async function inviteUser(){
+    const email=$("uEmail").value.trim().toLowerCase(); const role=$("uRole").value;
+    if(!email) return msg($("userMsg"),"Informe o e-mail.","err");
+    $("uSave").disabled=true;
+    try{
+      // App secundário para criar a conta SEM deslogar o admin atual.
+      const sec = firebase.apps.find(a=>a.name==="secondary") || firebase.initializeApp(PA.config,"secondary");
+      const tempPass = cryptoPass();
+      const cred = await sec.auth().createUserWithEmailAndPassword(email, tempPass);
+      const uid = cred.user.uid;
+      await db.collection("users").doc(uid).set({ email, role, createdAt:ts(), createdBy:me.email });
+      await sec.auth().signOut();
+      await auth.sendPasswordResetEmail(email); // usuário define a própria senha
+      msg($("userMsg"),"Convite enviado. O usuário recebeu e-mail para definir a senha.","ok");
+      $("uEmail").value=""; loadUsers();
+    }catch(e){ msg($("userMsg"), traduz(e.code) || e.message, "err"); }
+    finally{ $("uSave").disabled=false; }
+  }
+  async function removeUser(uid,email){
+    if(!confirm(`Remover acesso de ${email}? O papel é revogado imediatamente.`)) return;
+    try{ await db.collection("users").doc(uid).delete(); loadUsers(); }
+    catch(e){ alert(e.message); }
+    // Obs.: a conta de login (Auth) só pode ser apagada por completo via Cloud Function (Admin SDK).
+    // Removendo o papel aqui, o usuário perde TODO o acesso de escrita pelas regras de segurança.
+  }
+
+  /* ---------------- HELPERS ---------------- */
+  function ts(){ return firebase.firestore.FieldValue.serverTimestamp(); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  function cryptoPass(){ const a=new Uint8Array(18); crypto.getRandomValues(a); return "Aa1!"+btoa(String.fromCharCode(...a)).slice(0,20); }
+  async function delDoc(col,id,name,after){ if(!confirm(`Excluir “${name||"item"}”? Esta ação não pode ser desfeita.`)) return; try{ await db.collection(col).doc(id).delete(); after(); }catch(e){ alert(e.message);} }
+
+  async function uploadImages(files, folder, progEl, onUrl){
+    if(!files || !files.length) return;
+    progEl.classList.add("show"); const bar=progEl.querySelector(".bar");
+    for(const file of files){
+      if(!file.type.startsWith("image/")){ alert("Apenas imagens."); continue; }
+      if(file.size > 8*1024*1024){ alert(`${file.name} excede 8 MB.`); continue; }
+      const path=`${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name.replace(/[^\w.\-]/g,"_")}`;
+      const task=storage.ref(path).put(file, { contentType:file.type });
+      await new Promise((res,rej)=>{
+        task.on("state_changed",
+          s=>{ bar.style.width = Math.round((s.bytesTransferred/s.totalBytes)*100)+"%"; },
+          err=>{ alert("Falha no upload: "+err.message); rej(err); },
+          async()=>{ const url=await task.snapshot.ref.getDownloadURL(); onUrl(url); res(); });
+      }).catch(()=>{});
+      bar.style.width="0%";
+    }
+    progEl.classList.remove("show");
+  }
+})();
+</script>
+</body>
+</html>

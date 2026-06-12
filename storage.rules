@@ -1,0 +1,42 @@
+rules_version = '2';
+
+// ============================================================
+// Storage Security Rules — Plane Aviation
+// Leitura pública das imagens (o site mostra). Upload só editor/admin,
+// apenas imagens e com limite de tamanho. Publicar em:
+// Firebase Console → Storage → Regras.
+// ============================================================
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function role() {
+      return firestore.get(
+        /databases/(default)/documents/users/$(request.auth.uid)
+      ).data.role;
+    }
+    function isEditor() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && (role() == 'admin' || role() == 'editor');
+    }
+    function validImage() {
+      return request.resource.size < 8 * 1024 * 1024            // até 8 MB
+        && request.resource.contentType.matches('image/.*');    // só imagem
+    }
+
+    match /aircraft/{allPaths=**} {
+      allow read: if true;
+      allow write: if isEditor() && validImage();
+    }
+
+    match /cirrus/{allPaths=**} {
+      allow read: if true;
+      allow write: if isEditor() && validImage();
+    }
+
+    // Bloqueia o resto
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// ============================================================
+// Firestore Security Rules — Plane Aviation
+// Toda a AUTORIZAÇÃO REAL mora aqui (não na interface).
+// Publicar em: Firebase Console → Firestore → Regras.
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Helpers ----
+    function signedIn() {
+      return request.auth != null;
+    }
+    // Documento do usuário logado (papel é lido daqui, nunca confiando no cliente)
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function hasRoleDoc() {
+      return signedIn() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return hasRoleDoc() && userDoc().role == 'admin';
+    }
+    function isEditor() {
+      return hasRoleDoc() && (userDoc().role == 'admin' || userDoc().role == 'editor');
+    }
+
+    // ---- Aeronaves à venda (público lê; editor/admin escreve) ----
+    match /aircraft/{id} {
+      allow read: if true;
+      allow create, update, delete: if isEditor();
+    }
+
+    // ---- Frota de demonstração (Universo Cirrus) ----
+    match /cirrusFleet/{id} {
+      allow read: if true;
+      allow create, update, delete: if isEditor();
+    }
+
+    // ---- Usuários / papéis ----
+    // Um usuário pode ler o próprio doc (pra descobrir o papel).
+    // Só admin gerencia papéis de terceiros.
+    match /users/{uid} {
+      allow read:   if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Bloqueia qualquer outra coleção por padrão
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

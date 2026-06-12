@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aeronaves Disponíveis | Plane Aviation</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+
+  <!-- HERO -->
+  <section class="page-hero">
+    <div class="container">
+      <span class="eyebrow">Estoque</span>
+      <h1 class="h-display" style="margin-top:.5rem">Aeronaves Disponíveis</h1>
+      <p class="muted" style="font-size:.875rem;margin-top:.75rem;max-width:32rem">Unidades certificadas, inspecionadas e prontas para entrega. Exclusividade e segurança Plane Aviation.</p>
+    </div>
+  </section>
+
+  <!-- FILTROS -->
+  <section class="filters">
+    <div class="container">
+      <div class="filters-label">
+        <svg class="icon i-35" viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
+        <span>Filtros</span>
+      </div>
+      <div class="fgroup"><span>Modelo:</span><select id="fModelo"></select></div>
+      <div class="fgroup"><span>Condição:</span><select id="fCondicao"></select></div>
+      <div class="fgroup"><span>Ano:</span><select id="fAno"></select></div>
+      <span class="count" id="count"></span>
+    </div>
+  </section>
+
+  <!-- GRID -->
+  <section style="padding:3rem 0">
+    <div class="container">
+      <div class="grid g1 sm-g2 lg-g3" id="grid"></div>
+    </div>
+  </section>
+
+</main>
+<div id="site-footer"></div>
+
+<script src="site.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+  const seedListings = [
+    { id:"sr22t-2022-001", tag:"EXCLUSIVO PLANE", tagSolid:true, model:"SR22T", year:2022, hours:"320 horas", condition:"Seminovo" },
+    { id:"vision-jet-2023-001", tag:"Importação Exclusiva", tagSolid:false, model:"Vision Jet G2+", year:2023, hours:"180 horas", condition:"Seminovo" },
+    { id:"sr22-2021-001", tag:"EXCLUSIVO PLANE", tagSolid:true, model:"SR22", year:2021, hours:"540 horas", condition:"Seminovo" },
+    { id:"sr22t-2024-001", tag:"Importação Exclusiva", tagSolid:false, model:"SR22T", year:2024, hours:"95 horas", condition:"Novo" },
+    { id:"sr20-2022-001", tag:"EXCLUSIVO PLANE", tagSolid:true, model:"SR20", year:2022, hours:"210 horas", condition:"Seminovo" },
+    { id:"sr22-2023-001", tag:"Importação Exclusiva", tagSolid:false, model:"SR22", year:2023, hours:"150 horas", condition:"Novo" },
+  ];
+  let allListings = seedListings.slice();
+  const modelOptions = ["Todos","SR20","SR22","SR22T","Vision Jet"];
+  const conditionOptions = ["Todos","Novo","Seminovo"];
+  const yearOptions = ["Todos", ...[...new Set(allListings.map(l=>String(l.year)))].sort((a,b)=>b-a)];
+
+  const ARROW = '<svg class="icon i-3" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+  const XICO  = '<svg class="icon ico" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+  const ARROW35 = '<svg class="icon i-35" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+
+  const elModelo=document.getElementById("fModelo"), elCond=document.getElementById("fCondicao"),
+        elAno=document.getElementById("fAno"), elGrid=document.getElementById("grid"), elCount=document.getElementById("count");
+  const fill=(el,o)=>el.innerHTML=o.map(x=>`<option>${x}</option>`).join("");
+  fill(elModelo,modelOptions); fill(elCond,conditionOptions); fill(elAno,yearOptions);
+
+  function card(item){
+    const media = (item.images && item.images[0])
+      ? `<img src="${item.images[0]}" alt="${item.model}" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block">`
+      : `<div class="ph" style="aspect-ratio:4/3">${XICO}<span class="lbl">[Foto ${item.model}]</span></div>`;
+    return `<a href="aeronave.html?id=${item.id}" class="lcard">
+      <div class="img">
+        ${media}
+        <span class="tag ${item.tagSolid?'solid':'outline'}">${item.tag}</span>
+      </div>
+      <div class="body">
+        <div class="cond">${item.condition}</div>
+        <h3>${item.model}</h3>
+        <div class="meta"><span>${item.year}</span><span class="div"></span><span>${item.hours}</span></div>
+        <span class="more">Consultar Condições ${ARROW}</span>
+      </div>
+    </a>`;
+  }
+  const sell = `<div class="sell">
+      <div>
+        <p class="sell-title">Pensando em vender?</p>
+        <p class="sell-desc">Deixe a Plane cuidar de todo o processo comercial da sua aeronave.</p>
+      </div>
+      <a href="contato.html?motivo=vender" class="btn btn-solid btn-sm">Avaliar minha aeronave ${ARROW35}</a>
+    </div>`;
+
+  function render(){
+    const fm=elModelo.value, fc=elCond.value, fy=elAno.value;
+    const filtered=allListings.filter(l=>{
+      const m=fm==="Todos"||l.model.startsWith(fm);
+      const c=fc==="Todos"||l.condition===fc;
+      const y=fy==="Todos"||String(l.year)===fy;
+      return m&&c&&y;
+    });
+    let html="";
+    filtered.forEach((item,idx)=>{ if(idx===3) html+=sell; html+=card(item); });
+    if(filtered.length===0) html='<div class="empty">Nenhuma aeronave encontrada com os filtros selecionados.</div>';
+    elGrid.innerHTML=html;
+    elCount.textContent=`${filtered.length} aeronave${filtered.length!==1?"s":""}`;
+  }
+  [elModelo,elCond,elAno].forEach(el=>el.addEventListener("change",render));
+
+  function refreshYears(){
+    const years = [...new Set(allListings.map(l=>String(l.year)).filter(Boolean))].sort((a,b)=>b-a);
+    fill(elAno, ["Todos", ...years]);
+  }
+
+  async function init(){
+    if (window.PA && PA.configured) {
+      try {
+        const snap = await PA.db.collection("aircraft").orderBy("createdAt","desc").get();
+        if (!snap.empty) {
+          allListings = snap.docs.map(d => {
+            const a = d.data();
+            return { id:d.id, tag:a.tag||"", tagSolid:a.tagSolid!==false, model:a.model||"", year:a.year||"", hours:a.hours||"", condition:a.condition||"", images:a.images||[] };
+          });
+        }
+      } catch(e){ /* mantém seed em caso de erro */ }
+    }
+    refreshYears();
+    render();
+  }
+  init();
+</script>
+</body>
+</html>
