@@ -9,7 +9,7 @@ Site estático (HTML/CSS/JS puro) + Firebase (Auth, Firestore, Storage). Hosped�
 1. Acesse `console.firebase.google.com` → **Adicionar projeto**.
 2. **Authentication** → Sign-in method → ative **E-mail/senha**.
 3. **Firestore Database** → criar (modo produção).
-4. **Storage** → criar.
+4. **Storage** → criar. *(opcional para testar — veja a nota abaixo)*
 5. **Configurações do projeto → Seus apps → Web** → copie o objeto de config.
 
 ## 2. Colar as chaves
@@ -19,7 +19,27 @@ Enquanto estiver com os placeholders, o site público continua funcionando com d
 
 > A `apiKey` do Firebase **não é segredo** — ela só identifica o projeto. Quem protege os dados são as **regras de segurança** abaixo. Mesmo assim, restrinja a chave (passo 6).
 
-## 3. Publicar as regras de segurança (passo essencial)
+## 2b. Imagens: testar sem Storage (plano grátis)
+
+O Firebase Storage exige o plano **Blaze** (pago). Para **testar no plano grátis**, o `firebase-config.js` vem com:
+
+```
+IMAGE_MODE: "inline"
+```
+
+Nesse modo, as imagens são **comprimidas no navegador** (máx. 1280px, JPEG) e guardadas **dentro do próprio Firestore** — sem Storage. Limite prático: ~900 KB por aeronave (use 1–3 fotos). É ótimo para validar o fluxo.
+
+Quando ativar o **Blaze** e criar o Storage, troque para:
+
+```
+IMAGE_MODE: "storage"
+```
+
+e publique o `storage.rules`. Nada mais muda no código.
+
+> Para produção sem Blaze, a alternativa é o **Cloudinary** (free tier, upload "unsigned") — guarda só a URL no Firestore. Posso adaptar o uploader pra isso quando quiser (você já usou Cloudinary no OJO Scheduler).
+
+
 
 - **Firestore → Regras**: cole o conteúdo de `firestore.rules` e publique.
 - **Storage → Regras**: cole o conteúdo de `storage.rules` e publique.

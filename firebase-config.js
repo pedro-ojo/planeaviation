@@ -4,12 +4,12 @@
    Console → Configurações do projeto → Seus apps → SDK config.
    ============================================================ */
 const firebaseConfig = {
-  apiKey:            "PASTE_API_KEY",
-  authDomain:        "PASTE_PROJECT.firebaseapp.com",
-  projectId:         "PASTE_PROJECT",
-  storageBucket:     "PASTE_PROJECT.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId:             "PASTE_APP_ID",
+  apiKey:            "AIzaSyDDHBRZfH87ALu9OSbtRhrb8zVlKPkgSgw",
+  authDomain:        "planeaviation-3aa6a.firebaseapp.com",
+  projectId:         "planeaviation-3aa6a",
+  storageBucket:     "planeaviation-3aa6a.firebasestorage.app",
+  messagingSenderId: "192540086607",
+  appId:             "1:192540086607:web:296c22ba94c4952c79353a",
 };
 
 /* Detecta se ainda está com placeholders (modo demonstração) */
@@ -30,6 +30,10 @@ window.PA = {
   auth: _auth,
   db: _db,
   storage: _storage,
+  // Onde guardar as imagens das aeronaves:
+  //   "inline"  → comprimidas dentro do Firestore (funciona no plano grátis, sem Storage)
+  //   "storage" → Firebase Storage (requer plano Blaze; troque para cá depois do upgrade)
+  IMAGE_MODE: "inline",
   // papéis aceitos
   ROLES: ["admin", "editor"],
   // ícones disponíveis para "Tecnologias a bordo"
