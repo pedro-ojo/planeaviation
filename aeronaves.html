@@ -59,6 +59,15 @@
         elCount=document.getElementById("count"), elFilters=document.querySelector(".filters");
   const fill=(el,o)=>el.innerHTML=o.map(x=>`<option>${x}</option>`).join("");
 
+  function formatPrice(item){
+    if (item.priceNum) {
+      return item.currency === "BRL"
+        ? "R$ " + Number(item.priceNum).toLocaleString("pt-BR")
+        : "USD " + Number(item.priceNum).toLocaleString("en-US");
+    }
+    return "Sob Consulta";
+  }
+
   function card(item){
     const media = (item.images && item.images[0])
       ? `<img src="${item.images[0]}" alt="${item.model}" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block">`
@@ -66,13 +75,14 @@
     return `<a href="aeronave.html?id=${item.id}" class="lcard">
       <div class="img">
         ${media}
-        ${item.tag ? `<span class="tag ${item.tagSolid?'solid':'outline'}">${item.tag}</span>` : ""}
+        ${item.tag ? `<span class="tag solid">${item.tag}</span>` : ""}
       </div>
       <div class="body">
         <div class="cond">${item.condition||""}</div>
         <h3>${item.model}</h3>
-        <div class="meta"><span>${item.year||""}</span>${item.hours?`<span class="div"></span><span>${item.hours}</span>`:""}</div>
-        <span class="more">Consultar Condições ${ARROW}</span>
+        <div class="meta"><span>${item.year||""}</span>${item.hoursNum!=null?`<span class="div"></span><span>${Number(item.hoursNum).toLocaleString("pt-BR")} horas</span>`:""}</div>
+        <div style="font-size:.8125rem;font-weight:600;margin-top:.375rem">${formatPrice(item)}</div>
+        <span class="more">Ver detalhes ${ARROW}</span>
       </div>
     </a>`;
   }
@@ -126,7 +136,10 @@
         const snap = await PA.db.collection("aircraft").orderBy("createdAt","desc").get();
         allListings = snap.docs.map(d => {
           const a = d.data();
-          return { id:d.id, tag:a.tag||"", tagSolid:a.tagSolid!==false, model:a.model||"", year:a.year||"", hours:a.hours||"", condition:a.condition||"", images:a.images||[] };
+          return { id:d.id, tag:a.tag||"", tagSolid:true, model:a.model||"", year:a.year||"",
+            hoursNum:a.hoursNum!=null?a.hoursNum:null, hours:a.hours||"",
+            condition:a.condition||"", currency:a.currency||"USD", priceNum:a.priceNum||null,
+            images:a.images||[] };
         });
       } catch(e){ allListings = []; }
     }

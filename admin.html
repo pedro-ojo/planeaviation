@@ -174,7 +174,10 @@
     <div class="panel" id="panel-cirrus">
       <div class="row-head">
         <div><h2>Frota de demonstração Cirrus</h2><p class="sub">Aparece em <b>Universo Cirrus → Linha de modelos</b>.</p></div>
-        <button class="btn btn-solid btn-sm" id="addCirrus">+ Novo modelo</button>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" id="seedCirrus">↓ Popular modelos padrão</button>
+          <button class="btn btn-solid btn-sm" id="addCirrus">+ Novo modelo</button>
+        </div>
       </div>
       <table class="tbl"><tbody id="cirrusRows"></tbody></table>
     </div>
@@ -201,16 +204,21 @@
         <div class="fld"><label>Ano *</label><input id="acYear" type="number" placeholder="2022"></div>
       </div>
       <div class="grid2">
-        <div class="fld"><label>Horas</label><input id="acHours" placeholder="320 horas"></div>
+        <div class="fld"><label>Horas totais</label><input id="acHours" type="number" min="0" placeholder="320"></div>
         <div class="fld"><label>Condição</label><select id="acCondition"><option>Novo</option><option>Seminovo</option></select></div>
       </div>
       <div class="grid2">
         <div class="fld"><label>Localização</label><input id="acLocation" placeholder="Jundiaí — SP"></div>
-        <div class="fld"><label>Preço</label><input id="acPrice" placeholder="Sob Consulta"></div>
+        <div class="fld"><label>Moeda</label>
+          <select id="acCurrency">
+            <option value="USD">USD — Dólar americano</option>
+            <option value="BRL">BRL — Real brasileiro</option>
+          </select>
+        </div>
       </div>
       <div class="grid2">
+        <div class="fld"><label>Preço (só o número, ex: 850000)</label><input id="acPrice" type="number" min="0" placeholder="850000"></div>
         <div class="fld"><label>Selo (tag)</label><input id="acTag" placeholder="EXCLUSIVO PLANE"></div>
-        <div class="fld"><label>Estilo do selo</label><select id="acTagSolid"><option value="true">Sólido (preto)</option><option value="false">Contorno</option></select></div>
       </div>
 
       <div class="fld">
@@ -420,9 +428,13 @@
     a = a || {};
     $("acTitle").textContent = id ? "Editar aeronave" : "Nova aeronave";
     $("acId").value = id || "";
-    $("acModel").value=a.model||""; $("acYear").value=a.year||""; $("acHours").value=a.hours||"";
-    $("acCondition").value=a.condition||"Seminovo"; $("acLocation").value=a.location||""; $("acPrice").value=a.price||"Sob Consulta";
-    $("acTag").value=a.tag||""; $("acTagSolid").value=String(a.tagSolid!==false);
+    $("acModel").value=a.model||""; $("acYear").value=a.year||"";
+    $("acHours").value=a.hoursNum!=null?a.hoursNum:(a.hours?String(a.hours).replace(/\D/g,""):"");
+    $("acCondition").value=a.condition||"Seminovo";
+    $("acLocation").value=a.location||"";
+    $("acCurrency").value=a.currency||"USD";
+    $("acPrice").value=a.priceNum!=null?a.priceNum:(a.price&&!isNaN(Number(String(a.price).replace(/\D/g,"")))?String(a.price).replace(/\D/g,""):"");
+    $("acTag").value=a.tag||"";
     $("acDesc").value=a.description||"";
     editImages = Array.isArray(a.images)? a.images.slice() : []; renderEditThumbs();
     $("acSpecs").innerHTML=""; (a.specs||[]).forEach(s=>$("acSpecs").appendChild(specRow(s.label,s.value)));
@@ -436,9 +448,16 @@
     if(!model) return alert("Informe o modelo.");
     const specs=[...$("acSpecs").querySelectorAll(".rrow")].map(r=>{const i=r.querySelectorAll("input");return {label:i[0].value.trim(),value:i[1].value.trim()};}).filter(s=>s.label||s.value);
     const features=[...$("acFeats").querySelectorAll(".rrow")].map(r=>({icon:r.querySelector("select").value,title:r.querySelectorAll("input")[0].value.trim(),desc:r.querySelectorAll("input")[1].value.trim()})).filter(f=>f.title||f.desc);
-    const data={ model, year:Number($("acYear").value)||null, hours:$("acHours").value.trim(), condition:$("acCondition").value,
-      location:$("acLocation").value.trim(), price:$("acPrice").value.trim()||"Sob Consulta", tag:$("acTag").value.trim(),
-      tagSolid:$("acTagSolid").value==="true", description:$("acDesc").value.trim(),
+    const hoursNum = $("acHours").value ? Number($("acHours").value) : null;
+    const priceNum = $("acPrice").value ? Number($("acPrice").value) : null;
+    const currency = $("acCurrency").value || "USD";
+    const data={ model, year:Number($("acYear").value)||null,
+      hoursNum, hours: hoursNum!=null ? hoursNum : null,
+      condition:$("acCondition").value,
+      location:$("acLocation").value.trim(),
+      currency, priceNum, price: priceNum!=null ? priceNum : null,
+      tag:$("acTag").value.trim(), tagSolid:true,
+      description:$("acDesc").value.trim(),
       images:editImages, specs, features, updatedAt:ts(), updatedBy:me.email };
     const id=$("acId").value;
     if (PA.IMAGE_MODE === "inline" && inlineBytes(editImages) > INLINE_MAX_BYTES) {
@@ -474,10 +493,35 @@
     d.querySelector(".rm").onclick=()=>d.remove(); return d; }
   function wireCirrusModal(){
     $("addCirrus").onclick=()=>openCirrus(null,null);
+    $("seedCirrus").onclick=seedCirrusModels;
     $("cfAddSpec").onclick=()=>$("cfSpecs").appendChild(cspecRow());
     $("cfUpZone").onclick=(e)=>{ if(e.target.tagName!=="INPUT") $("cfFile").click(); };
     $("cfFile").onchange=(e)=>uploadImages(e.target.files,"cirrus",$("cfProg"),(url)=>{ cirrusImage=url; renderCfThumb(); });
     $("cfSave").onclick=saveCirrus;
+  }
+
+  async function seedCirrusModels(){
+    const snap = await db.collection("cirrusFleet").limit(1).get().catch(()=>null);
+    if (snap && !snap.empty) {
+      if (!confirm("Já existem modelos cadastrados. Deseja adicionar os modelos padrão mesmo assim (sem apagar os existentes)?")) return;
+    }
+    const models = [
+      { name:"Vision Jet", label:"Jato Pessoal", desc:"O primeiro e único jato pessoal com sistema CAPS. Motor Williams FJ33-5A, alcance de 1.200 nm e capacidade para 7 pessoas.", order:1, image:"",
+        specs:[{k:"Velocidade Máx.",v:"300 ktas"},{k:"Alcance",v:"1.200 nm"},{k:"Altitude Máx.",v:"31.000 ft"},{k:"Motor",v:"Williams FJ33-5A"}] },
+      { name:"SR22T", label:"Turbo Alta Performance", desc:"O carro-chefe da linha SR com motor turbo normalizado, ideal para voos em cruzeiro de longa distância com máxima performance.", order:2, image:"",
+        specs:[{k:"Velocidade Máx.",v:"214 ktas"},{k:"Alcance",v:"1.100 nm"},{k:"Altitude Máx.",v:"25.000 ft"},{k:"Motor",v:"Continental IO-550-N Turbo"}] },
+      { name:"SR22", label:"O Mais Vendido do Mundo", desc:"Mais de duas décadas consecutivas como o monomotor mais vendido do planeta. Equilíbrio perfeito entre performance, conforto e custo operacional.", order:3, image:"",
+        specs:[{k:"Velocidade Máx.",v:"183 ktas"},{k:"Alcance",v:"1.049 nm"},{k:"Altitude Máx.",v:"17.500 ft"},{k:"Motor",v:"Continental IO-550-N"}] },
+      { name:"SR20", label:"Iniciação e Treinamento", desc:"A porta de entrada perfeita na família Cirrus. Todos os sistemas de segurança CAPS com motor mais eficiente, ideal para formação e missões de curta distância.", order:4, image:"",
+        specs:[{k:"Velocidade Máx.",v:"160 ktas"},{k:"Alcance",v:"990 nm"},{k:"Altitude Máx.",v:"17.500 ft"},{k:"Motor",v:"Continental IO-390"}] }
+    ];
+    try {
+      const batch = db.batch();
+      models.forEach(m => { const ref = db.collection("cirrusFleet").doc(); batch.set(ref, { ...m, createdAt:ts(), createdBy:me.email }); });
+      await batch.commit();
+      loadCirrus();
+      alert("4 modelos Cirrus cadastrados com sucesso! Agora é só adicionar as imagens editando cada um.");
+    } catch(e){ alert("Erro ao popular: "+e.message); }
   }
   function renderCfThumb(){ $("cfThumb").innerHTML=cirrusImage?`<div class="t"><img src="${cirrusImage}"><button class="del">×</button></div>`:""; const b=$("cfThumb").querySelector(".del"); if(b)b.onclick=()=>{cirrusImage="";renderCfThumb();}; }
   function openCirrus(id,c){ c=c||{};

@@ -90,14 +90,14 @@
             <p id="descText" style="font-size:.875rem;color:hsl(var(--muted-foreground));line-height:1.8;white-space:pre-wrap"></p>
           </div>
 
-          <h2 class="label" style="margin-bottom:.75rem">Ficha Técnica</h2>
+          <h2 id="specsLabel" class="label" style="margin-bottom:.75rem">Ficha Técnica</h2>
           <div class="specs" id="specs"></div>
         </div>
       </div>
 
       <!-- Tecnologias -->
       <div class="feats">
-        <h2 class="label" style="margin-bottom:1.5rem">Tecnologias a bordo</h2>
+        <h2 id="featsLabel" class="label" style="margin-bottom:1.5rem">Tecnologias a bordo</h2>
         <div class="grid g1 sm-g2 lg-g4" id="feats" style="gap:1rem"></div>
       </div>
     </div>
@@ -154,34 +154,65 @@
     P = p;
     galleryCount = hasImgs() ? p.images.length : 4;
     activeImg = 0;
-    const tagClass = p.tagSolid ? "solid" : "outline";
     document.getElementById("crumbModel").textContent = `${p.model} — ${p.year}`;
-    document.getElementById("condLoc").textContent = `${p.condition} · ${p.location}`;
+    document.getElementById("condLoc").textContent = `${p.condition}${p.location?" · "+p.location:""}`;
     document.getElementById("model").textContent = p.model;
     document.getElementById("year").textContent = p.year;
-    document.getElementById("hours").textContent = p.hours;
     document.getElementById("barTitle").textContent = `${p.model} · ${p.year}`;
-    document.getElementById("barPrice").textContent = p.price;
+    // Horas — exibe "X horas" automaticamente
+    const hoursVal = p.hoursNum != null ? p.hoursNum : (p.hours ? String(p.hours).replace(/\D/g,"") : "");
+    document.getElementById("hours").textContent = hoursVal ? `${Number(hoursVal).toLocaleString("pt-BR")} horas` : "";
+    // Separador de horas só aparece se tiver horas
+    const metaDiv = document.querySelector(".det-meta .div");
+    if (metaDiv) metaDiv.style.display = hoursVal ? "" : "none";
+
+    // Preço com moeda
+    const currency = p.currency || "USD";
+    const priceNum = p.priceNum != null ? p.priceNum : (p.price && !isNaN(Number(p.price)) ? Number(p.price) : null);
+    let priceDisplay = "Sob Consulta";
+    if (priceNum) {
+      priceDisplay = currency === "USD"
+        ? "USD " + Number(priceNum).toLocaleString("en-US")
+        : "R$ " + Number(priceNum).toLocaleString("pt-BR");
+    }
+    document.getElementById("barPrice").textContent = priceDisplay;
+
     const galTag = document.getElementById("galTag");
-    galTag.className = "tag " + tagClass; galTag.textContent = p.tag || "";
+    galTag.className = "tag solid"; galTag.textContent = p.tag || "";
+    if (!p.tag) galTag.style.display = "none"; else galTag.style.display = "";
+
     // Descrição livre
     const descBlock = document.getElementById("descBlock");
     const descText  = document.getElementById("descText");
     if (p.description) { descText.textContent = p.description; descBlock.style.display = "block"; }
     else { descBlock.style.display = "none"; }
-    document.getElementById("specs").innerHTML = (p.specs||[]).map(s =>
+
+    // Ficha técnica — título só aparece se tiver linhas
+    const specsEl = document.getElementById("specs");
+    const specsLabel = document.getElementById("specsLabel");
+    const specsHTML = (p.specs||[]).filter(s=>s[0]||s[1]).map(s =>
       `<div class="r"><span class="muted">${s[0]}</span><span class="v">${s[1]}</span></div>`).join("");
-    document.getElementById("feats").innerHTML = (p.features||[]).map(f =>
+    if (specsHTML) { specsEl.innerHTML = specsHTML; specsLabel.style.display = ""; }
+    else { specsEl.innerHTML = ""; specsLabel.style.display = "none"; }
+
+    // Tecnologias — título só aparece se tiver itens
+    const featsEl = document.getElementById("feats");
+    const featsLabel = document.getElementById("featsLabel");
+    const featsHTML = (p.features||[]).filter(f=>f[1]||f[2]).map(f =>
       `<div class="feat"><svg class="icon i-5" viewBox="0 0 24 24">${ICONS[f[0]]||ICONS.Shield}</svg><h3>${f[1]}</h3><p>${f[2]}</p></div>`).join("");
+    if (featsHTML) { featsEl.innerHTML = featsHTML; featsLabel.style.display = ""; }
+    else { featsEl.innerHTML = ""; featsLabel.style.display = "none"; }
     paintMain(); paintThumbs();
   }
 
   // Normaliza doc do Firestore (specs/features como objetos) para o formato de render
   function fromFirestore(a){
     return {
-      tag:a.tag||"", tagSolid:a.tagSolid!==false, model:a.model||"", year:a.year||"", hours:a.hours||"",
-      condition:a.condition||"", price:a.price||"Sob Consulta", location:a.location||"",
-      description:a.description||"",
+      tag:a.tag||"", tagSolid:true, model:a.model||"", year:a.year||"",
+      hoursNum:a.hoursNum!=null?a.hoursNum:null, hours:a.hours||"",
+      condition:a.condition||"", currency:a.currency||"USD",
+      priceNum:a.priceNum!=null?a.priceNum:null, price:a.price||"",
+      location:a.location||"", description:a.description||"",
       images:a.images||[],
       specs:(a.specs||[]).map(s=>[s.label,s.value]),
       features:(a.features||[]).map(f=>[f.icon,f.title,f.desc])
