@@ -18,9 +18,10 @@ const PA_CONFIGURED = !String(firebaseConfig.apiKey).startsWith("PASTE");
 let _auth = null, _db = null, _storage = null;
 if (PA_CONFIGURED && typeof firebase !== "undefined") {
   if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  _auth = firebase.auth();
-  _db = firebase.firestore();
-  _storage = firebase.storage();
+  // Auth e Storage só existem se o SDK correspondente foi carregado na página
+  _auth    = typeof firebase.auth    === "function" ? firebase.auth()    : null;
+  _db      = typeof firebase.firestore === "function" ? firebase.firestore() : null;
+  _storage = typeof firebase.storage === "function" ? firebase.storage() : null;
 }
 
 /* Namespace global usado por todas as páginas */

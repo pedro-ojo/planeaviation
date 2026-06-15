@@ -83,6 +83,13 @@
             <a href="contato.html?motivo=comprar" class="btn btn-solid">Solicitar Proposta</a>
             <a href="contato.html?motivo=visita" class="btn btn-outline">Agendar Visita / Call</a>
           </div>
+
+          <!-- Descrição livre (só aparece se preenchida) -->
+          <div id="descBlock" style="display:none;margin-bottom:1.5rem">
+            <h2 class="label" style="margin-bottom:.75rem">Sobre esta aeronave</h2>
+            <p id="descText" style="font-size:.875rem;color:hsl(var(--muted-foreground));line-height:1.8;white-space:pre-wrap"></p>
+          </div>
+
           <h2 class="label" style="margin-bottom:.75rem">Ficha Técnica</h2>
           <div class="specs" id="specs"></div>
         </div>
@@ -157,6 +164,11 @@
     document.getElementById("barPrice").textContent = p.price;
     const galTag = document.getElementById("galTag");
     galTag.className = "tag " + tagClass; galTag.textContent = p.tag || "";
+    // Descrição livre
+    const descBlock = document.getElementById("descBlock");
+    const descText  = document.getElementById("descText");
+    if (p.description) { descText.textContent = p.description; descBlock.style.display = "block"; }
+    else { descBlock.style.display = "none"; }
     document.getElementById("specs").innerHTML = (p.specs||[]).map(s =>
       `<div class="r"><span class="muted">${s[0]}</span><span class="v">${s[1]}</span></div>`).join("");
     document.getElementById("feats").innerHTML = (p.features||[]).map(f =>
@@ -169,6 +181,7 @@
     return {
       tag:a.tag||"", tagSolid:a.tagSolid!==false, model:a.model||"", year:a.year||"", hours:a.hours||"",
       condition:a.condition||"", price:a.price||"Sob Consulta", location:a.location||"",
+      description:a.description||"",
       images:a.images||[],
       specs:(a.specs||[]).map(s=>[s.label,s.value]),
       features:(a.features||[]).map(f=>[f.icon,f.title,f.desc])

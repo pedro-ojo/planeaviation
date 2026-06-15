@@ -216,11 +216,16 @@
       <div class="fld">
         <label>Imagens (galeria)</label>
         <div class="uploader" id="acUpZone">
-          <div class="hint">Clique para enviar imagens (JPG/PNG, até 8 MB cada)</div>
+          <div class="hint">Clique para enviar imagens (JPG/PNG) · máx. 3 fotos no modo sem Storage</div>
           <input type="file" id="acFiles" accept="image/*" multiple>
         </div>
         <div class="prog" id="acProg"><div class="bar"></div></div>
         <div class="thumbs-edit" id="acThumbs"></div>
+      </div>
+
+      <div class="fld">
+        <label>Descrição</label>
+        <textarea id="acDesc" rows="6" style="resize:vertical;min-height:8rem" placeholder="Cole aqui a descrição completa da aeronave — histórico, equipamentos, estado geral, diferenciais, observações importantes..."></textarea>
       </div>
 
       <div class="fld">
@@ -418,6 +423,7 @@
     $("acModel").value=a.model||""; $("acYear").value=a.year||""; $("acHours").value=a.hours||"";
     $("acCondition").value=a.condition||"Seminovo"; $("acLocation").value=a.location||""; $("acPrice").value=a.price||"Sob Consulta";
     $("acTag").value=a.tag||""; $("acTagSolid").value=String(a.tagSolid!==false);
+    $("acDesc").value=a.description||"";
     editImages = Array.isArray(a.images)? a.images.slice() : []; renderEditThumbs();
     $("acSpecs").innerHTML=""; (a.specs||[]).forEach(s=>$("acSpecs").appendChild(specRow(s.label,s.value)));
     if(!(a.specs||[]).length) $("acSpecs").appendChild(specRow());
@@ -432,10 +438,11 @@
     const features=[...$("acFeats").querySelectorAll(".rrow")].map(r=>({icon:r.querySelector("select").value,title:r.querySelectorAll("input")[0].value.trim(),desc:r.querySelectorAll("input")[1].value.trim()})).filter(f=>f.title||f.desc);
     const data={ model, year:Number($("acYear").value)||null, hours:$("acHours").value.trim(), condition:$("acCondition").value,
       location:$("acLocation").value.trim(), price:$("acPrice").value.trim()||"Sob Consulta", tag:$("acTag").value.trim(),
-      tagSolid:$("acTagSolid").value==="true", images:editImages, specs, features, updatedAt:ts(), updatedBy:me.email };
+      tagSolid:$("acTagSolid").value==="true", description:$("acDesc").value.trim(),
+      images:editImages, specs, features, updatedAt:ts(), updatedBy:me.email };
     const id=$("acId").value;
-    if (PA.IMAGE_MODE === "inline" && inlineBytes(editImages) > 900*1024) {
-      return alert("As imagens somam mais de ~900 KB e estourariam o limite do Firestore.\nUse menos imagens (1–3) ou ative o Storage (plano Blaze) e troque IMAGE_MODE para \"storage\".");
+    if (PA.IMAGE_MODE === "inline" && inlineBytes(editImages) > INLINE_MAX_BYTES) {
+      return alert(`As imagens somam mais de ~750 KB e podem estourar o limite do Firestore.\nRemova algumas fotos ou ative o Storage (plano Blaze) e troque IMAGE_MODE para "storage".`);
     }
     try{
       if(id){ await db.collection("aircraft").doc(id).update(data); }
@@ -557,7 +564,11 @@
   async function delDoc(col,id,name,after){ if(!confirm(`Excluir “${name||"item"}”? Esta ação não pode ser desfeita.`)) return; try{ await db.collection(col).doc(id).delete(); after(); }catch(e){ alert(e.message);} }
 
   // Comprime a imagem no navegador e devolve uma data URL (modo sem Storage)
-  function compressToDataURL(file, maxDim=1280, quality=0.72){
+  // Limites conservadores para caber no limite de 1 MB do Firestore por documento
+  const INLINE_MAX_IMAGES = 3;
+  const INLINE_MAX_BYTES  = 750 * 1024; // 750 KB de folga
+
+  function compressToDataURL(file, maxDim=800, quality=0.55){
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -578,10 +589,24 @@
 
     // MODO INLINE — guarda no Firestore (plano grátis, sem Storage)
     if (PA.IMAGE_MODE === "inline" || !storage) {
-      progEl.classList.add("show"); const bar=progEl.querySelector(".bar"); bar.style.width="40%";
-      for(const file of files){
+      // Limita a 3 imagens no total (existentes + novas)
+      const slots = Math.max(0, INLINE_MAX_IMAGES - editImages.length);
+      const toProcess = Array.from(files).slice(0, slots);
+      if (files.length > slots) alert(`Modo sem Storage: máximo ${INLINE_MAX_IMAGES} imagens por aeronave. ${files.length - slots} ignorada(s).`);
+      if (!toProcess.length) return;
+      progEl.classList.add("show"); const bar=progEl.querySelector(".bar"); bar.style.width="20%";
+      for(const file of toProcess){
         if(!file.type.startsWith("image/")){ alert("Apenas imagens."); continue; }
-        try { const url = await compressToDataURL(file); onUrl(url); }
+        try {
+          const url = await compressToDataURL(file);
+          // Verifica tamanho acumulado antes de adicionar
+          if (inlineBytes([...editImages, url]) > INLINE_MAX_BYTES) {
+            alert("Limite de tamanho atingido (~750 KB). Use imagens menores ou menos fotos.\nPara mais imagens, ative o Firebase Storage (plano Blaze).");
+            break;
+          }
+          onUrl(url);
+          bar.style.width="80%";
+        }
         catch(e){ alert("Falha ao processar imagem: "+(e.message||e)); }
       }
       bar.style.width="100%"; setTimeout(()=>{ progEl.classList.remove("show"); bar.style.width="0%"; }, 250);
