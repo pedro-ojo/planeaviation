@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Plane Aviation — Representante exclusiva Cirrus no Brasil</title>
 <link rel="stylesheet" href="styles.css">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
   /* Home-specific */
   .hero-home{ position:relative; min-height:88vh; display:flex; align-items:center; justify-content:center; background:hsl(var(--muted)); overflow:hidden; }
@@ -227,29 +229,43 @@
 <div id="site-footer"></div>
 
 <script src="site.js"></script>
+<script src="firebase-config.js"></script>
 <script>
-  // Inventory highlights (4 cards)
-  const inv = [
-    { id:"sr22t-2022-001", tag:"EXCLUSIVO PLANE", style:"solid", model:"SR22T", year:2022, hours:"320 horas", condition:"Seminovo" },
-    { id:"vision-jet-2023-001", tag:"Importação Exclusiva", style:"soft", model:"Vision Jet G2+", year:2023, hours:"180 horas", condition:"Seminovo" },
-    { id:"sr22-2021-001", tag:"EXCLUSIVO PLANE", style:"solid", model:"SR22", year:2021, hours:"540 horas", condition:"Seminovo" },
-    { id:"sr22t-2024-001", tag:"Importação Exclusiva", style:"soft", model:"SR22T", year:2024, hours:"95 horas", condition:"Novo" },
-  ];
   const ARROW3 = '<svg class="icon i-3" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
   const XICO = '<svg class="icon ico" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
-  document.getElementById("invGrid").innerHTML = inv.map(i => `
-    <a href="aeronave.html?id=${i.id}" class="lcard">
+
+  function cardHTML(i){
+    const media = (i.images && i.images[0])
+      ? `<img src="${i.images[0]}" alt="${i.model}" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block">`
+      : `<div class="ph" style="aspect-ratio:4/3">${XICO}<span class="lbl">[Foto ${i.model}]</span></div>`;
+    return `<a href="aeronave.html?id=${i.id}" class="lcard">
       <div class="img">
-        <div class="ph" style="aspect-ratio:4/3">${XICO}<span class="lbl">[Foto ${i.model}]</span></div>
-        <span class="tag ${i.style}">${i.tag}</span>
+        ${media}
+        ${i.tag ? `<span class="tag ${i.tagSolid!==false?'solid':'outline'}">${i.tag}</span>` : ""}
       </div>
       <div class="body compact">
-        <div class="cond">${i.condition}</div>
+        <div class="cond">${i.condition||""}</div>
         <h3>${i.model}</h3>
-        <div class="meta"><span>${i.year}</span><span class="div"></span><span>${i.hours}</span></div>
+        <div class="meta"><span>${i.year||""}</span>${i.hours?`<span class="div"></span><span>${i.hours}</span>`:""}</div>
         <span class="more">Consultar Condições ${ARROW3}</span>
       </div>
-    </a>`).join("");
+    </a>`;
+  }
+
+  async function loadHighlights(){
+    const grid = document.getElementById("invGrid");
+    if (window.PA && PA.configured) {
+      try {
+        const snap = await PA.db.collection("aircraft").orderBy("createdAt","desc").limit(4).get();
+        if (!snap.empty) {
+          grid.innerHTML = snap.docs.map(d => cardHTML({ id:d.id, ...d.data() })).join("");
+          return;
+        }
+      } catch(e){ /* cai no estado vazio */ }
+    }
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Nenhuma aeronave cadastrada no momento. Em breve novas unidades estarão disponíveis.</div>';
+  }
+  loadHighlights();
 </script>
 </body>
 </html>

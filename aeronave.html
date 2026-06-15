@@ -119,18 +119,6 @@
     Wind:'<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
     Award:'<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>'
   };
-  const listingsData = {
-    "sr22t-2022-001": { tag:"EXCLUSIVO PLANE", tagSolid:true, model:"SR22T", year:2022, hours:"320 horas", condition:"Seminovo", price:"Sob Consulta", location:"Jundiaí — SP",
-      specs:[["Modelo","SR22T"],["Ano de Fabricação","2022"],["Total de Horas","320 horas"],["Condição","Seminovo"],["Motorização","Continental IO-550-N Turbo"],["Velocidade Cruzeiro","214 ktas"],["Alcance","1.100 nm"],["Localização","Jundiaí — SP"]],
-      features:[["Shield","CAPS Integrado","Paraquedas balístico de fábrica."],["Monitor","Garmin Perspective+","Suite avançada de aviônicos."],["Navigation","Turbo Normalizado","Performance em altitude."],["Gauge","Ar-condicionado","Conforto total a bordo."]] },
-    "vision-jet-2023-001": { tag:"Importação Exclusiva", tagSolid:false, model:"Vision Jet G2+", year:2023, hours:"180 horas", condition:"Seminovo", price:"Sob Consulta", location:"Campinas — SP",
-      specs:[["Modelo","Vision Jet G2+"],["Ano de Fabricação","2023"],["Total de Horas","180 horas"],["Condição","Seminovo"],["Motorização","Williams FJ33-5A"],["Velocidade Cruzeiro","300 ktas"],["Alcance","1.200 nm"],["Localização","Campinas — SP"]],
-      features:[["Shield","CAPS Integrado","Único jato com paraquedas balístico."],["Monitor","Garmin G3000","Touchscreen suite completa."],["Navigation","Safe Return","Pouso autônomo de emergência."],["Gauge","Autothrottle","Controle automático de potência."]] }
-  };
-  const fallback = { tag:"EXCLUSIVO PLANE", tagSolid:true, model:"SR22", year:2021, hours:"540 horas", condition:"Seminovo", price:"Sob Consulta", location:"Jundiaí — SP",
-    specs:[["Modelo","SR22"],["Ano de Fabricação","2021"],["Total de Horas","540 horas"],["Condição","Seminovo"],["Motorização","Continental IO-550-N"],["Velocidade Cruzeiro","183 ktas"],["Alcance","1.049 nm"],["Localização","Jundiaí — SP"]],
-    features:[["Shield","CAPS Integrado","Paraquedas balístico de fábrica."],["Monitor","Garmin Perspective+","Suite avançada de aviônicos."],["Navigation","Hypoxia Guard","Proteção automática em altitude."],["Gauge","EVS Enhanced","Visão sintética aprimorada."]] };
-
   const XICO = '<svg class="icon ico" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
   const id = new URLSearchParams(location.search).get("id");
   let activeImg = 0, galleryCount = 4, P = null;
@@ -187,14 +175,26 @@
     };
   }
 
+  function notFound(){
+    document.querySelector(".det-wrap").innerHTML = `
+      <div class="container" style="padding:4rem 0;text-align:center">
+        <span class="eyebrow">Estoque</span>
+        <h1 class="h-display" style="margin-top:.5rem">Aeronave não encontrada</h1>
+        <p class="muted" style="font-size:.875rem;margin-top:.75rem;max-width:28rem;margin-left:auto;margin-right:auto">Este anúncio não existe mais ou foi removido. Veja as demais aeronaves disponíveis.</p>
+        <a href="aeronaves.html" class="btn btn-solid btn-md" style="margin-top:1.5rem;display:inline-flex">Ver Aeronaves Disponíveis</a>
+      </div>`;
+    document.querySelector(".sticky-bar").style.display = "none";
+    document.querySelector(".crumb").style.display = "none";
+  }
+
   async function init(){
     if (window.PA && PA.configured && id) {
       try {
         const doc = await PA.db.collection("aircraft").doc(id).get();
         if (doc.exists) { render(fromFirestore(doc.data())); return; }
-      } catch(e){ /* cai no fallback */ }
+      } catch(e){ /* cai em não encontrada */ }
     }
-    render(listingsData[id] || fallback);
+    notFound();
   }
   init();
 </script>
